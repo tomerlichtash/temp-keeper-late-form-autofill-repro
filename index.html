@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Late login form autofill repro</title>
+    <style>
+      body { font: 16px system-ui, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
+      form { display: grid; gap: 8px; margin-top: 16px; }
+      input, button { font: inherit; padding: 8px; }
+      #log { font: 12px ui-monospace, monospace; white-space: pre-wrap; background: #f4f4f4; padding: 8px; margin-top: 16px; }
+    </style>
+  </head>
+  <body>
+    <h1>Late login form autofill repro</h1>
+    <p>
+      Plain HTML login form, inserted into the DOM <b>?delay=N</b> ms after the <code>load</code> event
+      (default 1000). This mimics SPAs and web components that render the login form after async fetches.
+      Use <b>?delay=static</b> for a form present in the initial HTML, as a baseline.
+    </p>
+    <p>
+      Repro: save a login for this URL, enable autofill on page load, reload. Compare
+      <a href="?delay=static">?delay=static</a> with <a href="?delay=1000">?delay=1000</a>.
+      Manual fill from the in-field icon works in both.
+    </p>
+    <div id="slot"></div>
+    <div id="log"></div>
+    <script>
+      const t0 = performance.now();
+      const log = (msg) => {
+        document.getElementById('log').textContent += `${Math.round(performance.now() - t0)}ms ${msg}\n`;
+      };
+      const formHtml = `
+        <form onsubmit="return false">
+          <input type="email" name="email" autocomplete="username" placeholder="Email">
+          <input type="password" name="password" autocomplete="current-password" placeholder="Password">
+          <button>Sign in</button>
+        </form>`;
+      const insertForm = () => {
+        document.getElementById('slot').innerHTML = formHtml;
+        log('login form inserted');
+        document.querySelectorAll('input').forEach((el) =>
+          el.addEventListener('input', () => log(`${el.name} filled`)),
+        );
+      };
+      const delay = new URLSearchParams(location.search).get('delay') ?? '1000';
+      if (delay === 'static') insertForm();
+      window.addEventListener('load', () => {
+        log('load');
+        if (delay !== 'static') setTimeout(insertForm, Number(delay) || 0);
+      });
+    </script>
+  </body>
+</html>
